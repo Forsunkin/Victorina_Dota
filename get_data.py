@@ -14,59 +14,67 @@ test_post_v_bazu = ['Queen of Pain', 'Platemail', 'Null Talisman', "Linken's Sph
 
 # Функция возвращает список с id матчей с параметрами Рейтинговый матч, режим AllPick
 # Далее отправляет список с id в функцию, которая циклом получает данные со страницы каждого матча
-# def get_match_id_from_page():
-#         response = requests.get(url+match_str, headers=headers)
-#         soup = BeautifulSoup(response.text, 'lxml')
-#         items = soup.find_all('tr')
-#         rate = 'Рейтинговый подбор игр'
-#         mode = 'All Pick'
-#         post = []
-#
-#         for item in items:
-#             if rate in str(item) and mode in str(item):
-#                 try:
-#                     value = item.find('a').get('href')
-#                     if match_str in value:
-#                         match_id = value.split(match_str)[1]
-#                         if match_id not in post:
-#                             post.append(match_id)
-#                 except:
-#                     AttributeError
-#                 continue
-#         return post
+
+
+def get_match_id_from_main_page():
+        response = requests.get(url+match_str, headers=headers)
+        soup = BeautifulSoup(response.text, 'lxml')
+        items = soup.find_all('tr')
+        rate = 'Рейтинговый подбор игр'
+        mode = 'All Pick'
+        post = []
+
+        for item in items:
+            if rate in str(item) and mode in str(item):
+                try:
+                    value = item.find('a').get('href')
+                    if match_str in value:
+                        match_id = value.split(match_str)[1]
+                        if match_id not in post:
+                            post.append(match_id)
+                except:
+                    AttributeError
+                continue
+        parse_pages(post)
+#['6508700610', '6508713704', '6508737615', '6508724898', '6508730306', '6508697127', '6508724773', '6508730149', '6508739078', '6508725515', '6508721160', '6508737234', '6508743735', '6508733695', '6508737885', '6508721767', '6508710789', '6508720651', '6508722675', '6508725087', '6508721033']
 
 
 # для отоадки поиска по страницы, для избежания 409 прибегаю к парсингу текстового файла.
-def opros(obj):
-    for item in obj:
-        response = requests.get(url+match_str+item, headers=headers)
-        soup = BeautifulSoup(response.text, 'lxml')
+# заменить шапку функции по окончанию отладки
+# def opros(obj):
+#     for item in obj:
+#         response = requests.get(url+match_str+item, headers=headers)
+#         soup = BeautifulSoup(response.text, 'lxml')
 
 
 
-def testovoe(obj):
-    with open('6496190417.txt', 'r', encoding='utf-8') as file:
+
+def parse_pages(obj):
+    list = [None, None, None, None, None, None, None, None, None, None]
+    for match_id in obj:
+        reqsponse = requests.get(url+match_str+match_id, headers=headers)
         regex_radiant = re.compile('.*col-hints faction-radiant player-.*')
         regex_dire = re.compile('.*col-hints faction-dire player-.*')
-        soup = BeautifulSoup(file.read(), 'lxml')
+        soup = BeautifulSoup(reqsponse.text, 'lxml')
         match_result = soup.find(class_='match-result').text
         if match_result == 'Победа сил Тьмы':
             regex_result = regex_dire
-        elif obj == 'Победа сил Света':
+        elif match_result == 'Победа сил Света':
             regex_result = regex_radiant
 
         for item in soup.find_all('tr', {"class": regex_result}):
             if item.find('th') is not None:  # исключение, отбор тегов не из таблиц
                 continue
             elif item.find('th') is None:
-                hero_name = (item.find('img').get('title'))  # hero_name
-                list = [hero_name]
+                list[0] = match_id                              # match_id
+                list[1] = (item.find('img').get('title'))       # hero_name
+                list[2] = getid_from_baza(list[1])              # hero_id
                 inventory = item.find_all(class_='player-inventory-items')
                 neutral_slot = item.find_all(class_='player-neutral-item')
                 for slot in inventory:
                     for tag_slot in slot:
                         try:
-                            list.append(tag_slot.find('img').get('title'))
+                            list.append(tag_slot.find('img').get('title'))                          #пепеписать логику добавления слотов
                         except:
                             AttributeError
                         continue
@@ -77,8 +85,9 @@ def testovoe(obj):
                             AttributeError
                         continue
 
-                print(list)
-# Требуемые данные: [id_героя, слот1, слот2, 3, 4, 5, 6, нейтральныйшмот]
+                post_to_baza(list)
+# list = [6496190417, 39, 'Queen of Pain', 'Platemail', 'Null Talisman', "Linken's Sphere", 'Null Talisman', 'Power Treads', 'Orchid Malevolence', 'Elven Tunic']
+
 
 
 def getid_from_baza(obj):
@@ -87,7 +96,29 @@ def getid_from_baza(obj):
     rrr = cur.execute(f"SELECT hero_id FROM opendota WHERE name == '{obj}'")
     rrr = cur.fetchone()
     id_of_hero = rrr[0]
-    print(id_of_hero)
+    return id_of_hero
 
-getid_from_baza(test_post_v_bazu[0])
-#Написать функицию которая собирает строку со всеми данными используя полученное id
+
+def post_to_baza(obj):
+    conn = sqlite3.connect('eto_baza.db')
+    cur = conn.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS questions(
+                id INTEGER PRIMARY KEY,
+                match_id INTEGER,
+                hero_id INTEGER,
+                hero_name TEXT,
+                slot1 TEXT,
+                slot2 TEXT,
+                slot3 TEXT,
+                slot4 TEXT,
+                slot5 TEXT,
+                slot6 TEXT,
+                neutralslot TEXT);''')
+    print(obj)
+    cur.execute('''INSERT INTO questions (match_id, hero_id, hero_name, slot1, slot2, slot3, slot4, slot5, slot6, neutralslot) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);''', [obj])
+    conn.commit()
+
+
+
+get_match_id_from_main_page()
