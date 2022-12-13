@@ -17,8 +17,8 @@ def post_data_items():
     items = re_items.json()['result']['items']
 
     for item in items:
-        uin = (item['id'], item['localized_name'])
-        cur.execute(f'''INSERT INTO items VALUES (?,?)''', uin)
+        uin = (item['id'], item['name'][5:], item['localized_name'])
+        cur.execute(f'''INSERT or REPLACE INTO items VALUES (?,?,?)''', uin)
     conn.commit()
 
 
@@ -31,7 +31,10 @@ def post_data_heroes():
         roles_list = hero["roles"]
         roles = roles_list + ([None] * (4 - len(roles_list))) if len(roles_list) < 4 else roles_list
         uin = roles[:4]
-        postal = hero["id"], hero["localized_name"], uin[0], uin[1], uin[2], uin[3]
-        cur.execute(f'''INSERT INTO heroes VALUES (?,?,?,?,?,?)''', postal)
+        postal = hero["id"], hero["localized_name"], hero["name"][14:], uin[0], uin[1], uin[2], uin[3]
+        cur.execute(f'''INSERT or REPLACE INTO heroes VALUES (?,?,?,?,?,?,?)''', postal)
     conn.commit()
+
+
+post_data_items()
 post_data_heroes()

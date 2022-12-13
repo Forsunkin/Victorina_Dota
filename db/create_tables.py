@@ -11,10 +11,12 @@ cur_arch = conn_arch.cursor()
 
 cur.execute('''CREATE TABLE IF NOT EXISTS items(
                 id INTEGER PRIMARY KEY,
+                localized_name TEXT,
                 name TEXT);''')
 
 cur.execute('''CREATE TABLE IF NOT EXISTS heroes(
                id INTEGER PRIMARY KEY,
+               localized_name TEXT,
                name TEXT,
                role_1 TEXT,
                role_2 TEXT,
