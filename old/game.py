@@ -1,21 +1,37 @@
+"""Вывести случайную сборку из локальной базы."""
+
 import sqlite3
+from pathlib import Path
+
 from random_quests import get_random_list
 
 
-conn = sqlite3.connect('db/archive.db')
-cur = conn.cursor()
-
-#rlist = get_random_list()
-
-random_squest = 300
+DB_PATH = Path(__file__).resolve().parent / "db" / "archive.db"
 
 
-def get_data(obj):
-    s = cur.execute(f'SELECT * FROM quests WHERE ID is {obj}')
-    print(s.fetchone())                             # возвращает (300, 6916797701, 29, 1, 79, 73, 180, 108, 36, 838)
+def main():
+    if not DB_PATH.exists():
+        raise SystemExit("База не найдена. Сначала запустите db/create_tables.py.")
+
+    with sqlite3.connect(DB_PATH) as conn:
+        ids = get_random_list(conn)
+        if not ids:
+            raise SystemExit("Нет заданий. Сначала запустите db/filling_db.py.")
+
+        question = conn.execute(
+            """
+            SELECT match_id, hero_id, item_1, item_2, item_3,
+                   item_4, item_5, item_6, item_neutral
+            FROM quests WHERE id = ?
+            """,
+            (ids[0],),
+        ).fetchone()
+
+    print("Матч:", question[0])
+    print("Герой (ID):", question[1])
+    print("Предметы (ID):", question[2:8])
+    print("Нейтральный предмет (ID):", question[8])
 
 
-def get_ticket(obj):
-    pass
-
-get_data(random_squest)
+if __name__ == "__main__":
+    main()
